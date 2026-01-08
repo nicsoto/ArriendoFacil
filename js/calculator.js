@@ -122,36 +122,43 @@ const Calculator = {
     /**
    * Calcular reajuste por IPC
    * @param {number} initialAmount - Monto inicial del arriendo
-   * @param {string} startDate - Fecha de inicio del contrato
-   * @param {string} endDate - Fecha de término/reajuste
+   * @param {string} startDate - Fecha de inicio (mes base, no se incluye en el cálculo)
+   * @param {string} endDate - Fecha de término (mes final, se incluye en el cálculo)
+   * 
+   * METODOLOGÍA INE: Para calcular variación de dic 2023 a dic 2024:
+   * Se acumulan las variaciones de ene 2024 a dic 2024 (12 meses)
+   * El mes de inicio es el "mes base" y NO se incluye en el cálculo
    */
     async calculateIPCAdjustment(initialAmount, startDate, endDate) {
         try {
             const ipcData = await this.fetchIPC();
 
-            // IMPORTANTE: El IPC se publica mensualmente, el día no importa
-            // Solo usamos año y mes para la comparación
-            const startYear = new Date(startDate).getFullYear();
-            const startMonth = new Date(startDate).getMonth();
-            const endYear = new Date(endDate).getFullYear();
-            const endMonth = new Date(endDate).getMonth();
+            // Usar UTC para evitar problemas de zona horaria
+            const startDateObj = new Date(startDate);
+            const startYear = startDateObj.getUTCFullYear();
+            const startMonth = startDateObj.getUTCMonth();
 
-            // IMPORTANTE: Mindicador.cl devuelve VARIACIONES MENSUALES (porcentajes)
-            // No el índice base. Para calcular el reajuste correcto como el INE,
-            // necesitamos ACUMULAR todas las variaciones mensuales entre las dos fechas
+            const endDateObj = new Date(endDate);
+            const endYear = endDateObj.getUTCFullYear();
+            const endMonth = endDateObj.getUTCMonth();
 
-            // Filtrar datos entre startMonth/Year y endMonth/Year (inclusive)
+            // METODOLOGÍA INE: El mes de inicio es el mes BASE
+            // Se acumulan las variaciones desde el mes SIGUIENTE al inicio hasta el mes final
+            // Ejemplo: Dic 2023 a Dic 2024 = acumular Ene 2024 a Dic 2024
+
+            // Filtrar datos: DESPUÉS del mes inicio y HASTA el mes final (inclusive)
             const relevantData = ipcData.filter(item => {
                 const itemDate = new Date(item.fecha);
-                const itemYear = itemDate.getFullYear();
-                const itemMonth = itemDate.getMonth();
+                const itemYear = itemDate.getUTCFullYear();
+                const itemMonth = itemDate.getUTCMonth();
 
                 // Comparar solo año y mes
                 const itemYearMonth = itemYear * 12 + itemMonth;
                 const startYearMonth = startYear * 12 + startMonth;
                 const endYearMonth = endYear * 12 + endMonth;
 
-                return itemYearMonth >= startYearMonth && itemYearMonth <= endYearMonth;
+                // Mayor que inicio (exclusivo) y menor o igual que fin (inclusivo)
+                return itemYearMonth > startYearMonth && itemYearMonth <= endYearMonth;
             }).sort((a, b) => new Date(a.fecha) - new Date(b.fecha));
 
             if (relevantData.length === 0) {
@@ -161,7 +168,7 @@ const Calculator = {
                 throw new Error(`No se encontraron datos de IPC para las fechas especificadas. Datos disponibles desde ${minDate} hasta ${maxDate}.`);
             }
 
-            // Calcular factor acumulado: (1 + var1/100) * (1 + var2/100) * ... - 1
+            // Calcular factor acumulado: (1 + var1/100) * (1 + var2/100) * ... 
             let accumulatedFactor = 1;
             relevantData.forEach(item => {
                 accumulatedFactor *= (1 + item.valor / 100);
@@ -173,21 +180,36 @@ const Calculator = {
             // Nuevo monto = monto inicial * factor acumulado
             const newAmount = initialAmount * accumulatedFactor;
 
-            // Formatear fechas para mostrar solo mes/año
+            // Formatear fechas para mostrar solo mes/año (usando UTC)
             const formatMonthYear = (dateStr) => {
                 const d = new Date(dateStr);
-                return d.toLocaleDateString('es-CL', { year: 'numeric', month: 'long' });
+                const months = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio',
+                    'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'];
+                return `${months[d.getUTCMonth()]} de ${d.getUTCFullYear()}`;
+            };
+
+            // El período mostrado es el mes base (inicio) al mes final
+            const formatStartMonth = () => {
+                const months = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio',
+                    'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'];
+                return `${months[startMonth]} de ${startYear}`;
+            };
+
+            const formatEndMonth = () => {
+                const months = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio',
+                    'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'];
+                return `${months[endMonth]} de ${endYear}`;
             };
 
             return {
                 originalAmount: initialAmount,
                 newAmount: Math.round(newAmount),
-                variation: totalVariation.toFixed(2),
+                variation: totalVariation.toFixed(1),
                 ipcStart: relevantData[0].valor.toFixed(2) + '%',
                 ipcEnd: relevantData[relevantData.length - 1].valor.toFixed(2) + '%',
                 monthsCount: relevantData.length,
-                startDate: formatMonthYear(relevantData[0].fecha),
-                endDate: formatMonthYear(relevantData[relevantData.length - 1].fecha)
+                startDate: formatStartMonth(),
+                endDate: formatEndMonth()
             };
         } catch (error) {
             console.error('Error calculando reajuste IPC:', error);

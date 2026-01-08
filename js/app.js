@@ -222,6 +222,23 @@ const App = {
                 await this.calculateIPC();
             });
         }
+
+        // Establecer valores predeterminados para los selectores
+        const currentDate = new Date();
+        const currentYear = currentDate.getFullYear();
+        const currentMonth = currentDate.getMonth() + 1;
+
+        // Fecha inicio: hace un año, mismo mes
+        const startMonthSelect = document.getElementById('ipc-start-month');
+        const startYearSelect = document.getElementById('ipc-start-year');
+        if (startMonthSelect) startMonthSelect.value = currentMonth;
+        if (startYearSelect) startYearSelect.value = currentYear - 1;
+
+        // Fecha fin: mes y año actual
+        const endMonthSelect = document.getElementById('ipc-end-month');
+        const endYearSelect = document.getElementById('ipc-end-year');
+        if (endMonthSelect) endMonthSelect.value = currentMonth;
+        if (endYearSelect) endYearSelect.value = currentYear;
     },
 
     initDocumentsHandlers() {
@@ -299,8 +316,14 @@ const App = {
 
     async calculateIPC() {
         const amount = parseFloat(document.getElementById('ipc-amount').value);
-        const startDate = document.getElementById('ipc-start-date').value + '-01'; // Agregar día 01
-        const endDate = document.getElementById('ipc-end-date').value + '-01'; // Agregar día 01
+        const startMonth = document.getElementById('ipc-start-month').value;
+        const startYear = document.getElementById('ipc-start-year').value;
+        const endMonth = document.getElementById('ipc-end-month').value;
+        const endYear = document.getElementById('ipc-end-year').value;
+
+        // Construir fechas en formato YYYY-MM-DD
+        const startDate = `${startYear}-${String(startMonth).padStart(2, '0')}-01`;
+        const endDate = `${endYear}-${String(endMonth).padStart(2, '0')}-01`;
 
         const resultDiv = document.getElementById('ipc-result');
         resultDiv.innerHTML = '<p>Calculando...</p>';

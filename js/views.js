@@ -263,8 +263,38 @@ const Views = {
    */
   renderCalculator() {
     const currentDate = new Date();
-    const currentMonth = `${currentDate.getFullYear()}-${String(currentDate.getMonth() + 1).padStart(2, '0')}`;
-    const lastYearMonth = `${currentDate.getFullYear() - 1}-${String(currentDate.getMonth() + 1).padStart(2, '0')}`;
+    const currentYear = currentDate.getFullYear();
+    const currentMonth = currentDate.getMonth() + 1;
+
+    // Generar opciones de meses
+    const months = [
+      { value: 1, name: 'Enero' },
+      { value: 2, name: 'Febrero' },
+      { value: 3, name: 'Marzo' },
+      { value: 4, name: 'Abril' },
+      { value: 5, name: 'Mayo' },
+      { value: 6, name: 'Junio' },
+      { value: 7, name: 'Julio' },
+      { value: 8, name: 'Agosto' },
+      { value: 9, name: 'Septiembre' },
+      { value: 10, name: 'Octubre' },
+      { value: 11, name: 'Noviembre' },
+      { value: 12, name: 'Diciembre' }
+    ];
+
+    const monthOptions = months.map(m =>
+      `<option value="${m.value}">${m.name}</option>`
+    ).join('');
+
+    // Generar opciones de años dinámicamente (desde 2000 hasta el año actual)
+    const startingYear = 2000;
+    const years = Array.from(
+      { length: currentYear - startingYear + 1 },
+      (_, i) => startingYear + i
+    );
+    const yearOptions = years.map(y =>
+      `<option value="${y}">${y}</option>`
+    ).join('');
 
     return `
       <h1>Calculadora de Reajustes</h1>
@@ -280,13 +310,27 @@ const Views = {
             
             <div class="form-group">
               <label class="form-label form-label-required">Mes/Año Inicio</label>
-              <input type="month" id="ipc-start-date" class="form-input" required value="${lastYearMonth}">
+              <div class="form-row">
+                <select id="ipc-start-month" class="form-input" required>
+                  ${monthOptions}
+                </select>
+                <select id="ipc-start-year" class="form-input" required>
+                  ${yearOptions}
+                </select>
+              </div>
               <span class="form-help">El IPC se calcula por mes, el día no importa</span>
             </div>
             
             <div class="form-group">
               <label class="form-label form-label-required">Mes/Año Final</label>
-              <input type="month" id="ipc-end-date" class="form-input" required value="${currentMonth}">
+              <div class="form-row">
+                <select id="ipc-end-month" class="form-input" required>
+                  ${monthOptions}
+                </select>
+                <select id="ipc-end-year" class="form-input" required>
+                  ${yearOptions}
+                </select>
+              </div>
             </div>
             
             <button type="submit" class="btn btn-primary">Calcular Reajuste</button>
