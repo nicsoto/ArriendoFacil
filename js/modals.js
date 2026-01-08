@@ -212,6 +212,69 @@ const Modals = {
                 <span class="form-help">Máximo 2 meses de arriendo según Ley 21.461</span>
               </div>
               
+              <!-- Opciones de Contrato -->
+              <h4 style="margin-top: var(--space-lg);">Opciones del Contrato</h4>
+              
+              <div class="form-row">
+                <div class="form-group">
+                  <label class="form-label form-label-required">Tipo de Contrato</label>
+                  <select id="contract-type" class="form-select" required>
+                    <option value="plazo_fijo">Plazo Fijo</option>
+                    <option value="mes_a_mes">Mes a Mes</option>
+                    <option value="indefinido">Indefinido</option>
+                  </select>
+                  <span class="form-help">Afecta las reglas de desahucio</span>
+                </div>
+                
+                <div class="form-group">
+                  <label class="form-label form-label-required">Condición del Inmueble</label>
+                  <select id="contract-furnished" class="form-select" required onchange="Modals.toggleFurnishedWarning(this.value)">
+                    <option value="sin_amoblar">Sin amoblar</option>
+                    <option value="amoblado">Amoblado</option>
+                  </select>
+                  <span class="form-help">Si es amoblado, está gravado con IVA</span>
+                </div>
+              </div>
+              
+              <div id="furnished-warning" class="alert alert-warning" style="display: none;">
+                ⚠️ <strong>Importante:</strong> El arriendo de inmuebles amoblados está gravado con IVA (19%). 
+                Deberás emitir boleta de servicios y declarar en el formulario F29.
+              </div>
+              
+              <div class="form-row">
+                <div class="form-group">
+                  <label class="form-label form-label-required">Subarriendo</label>
+                  <select id="contract-sublease" class="form-select" required>
+                    <option value="prohibido">Prohibido</option>
+                    <option value="permitido">Permitido con autorización escrita</option>
+                  </select>
+                </div>
+                
+                <div class="form-group">
+                  <label class="form-label">Mascotas</label>
+                  <select id="contract-pets" class="form-select">
+                    <option value="prohibidas">Prohibidas</option>
+                    <option value="permitidas">Permitidas</option>
+                    <option value="con_restriccion">Con restricciones (especificar)</option>
+                  </select>
+                </div>
+              </div>
+              
+              <div class="form-group">
+                <label class="form-label">
+                  <input type="checkbox" id="contract-inventory" style="margin-right: 8px;">
+                  Incluir inventario / acta de entrega
+                </label>
+                <span class="form-help">Genera un anexo con el inventario para evitar conflictos al término</span>
+              </div>
+              
+              <div id="inventory-section" class="form-group" style="display: none;">
+                <label class="form-label">Inventario del Inmueble</label>
+                <textarea id="contract-inventory-items" class="form-input" rows="5" 
+                          placeholder="Ej:&#10;- Refrigerador Samsung (buen estado)&#10;- Cocina 4 platos (buen estado)&#10;- Sofá 3 cuerpos (uso normal)&#10;- Mesa comedor + 4 sillas"></textarea>
+                <span class="form-help">Describe los bienes incluidos y su estado actual</span>
+              </div>
+              
               <div class="modal-footer">
                 <button type="button" class="btn btn-secondary" onclick="Modals.closeModal('contract-modal')">
                   Cancelar
@@ -242,6 +305,22 @@ const Modals = {
       e.preventDefault();
       this.saveContract();
     });
+
+    // Event listener para mostrar/ocultar sección de inventario
+    document.getElementById('contract-inventory').addEventListener('change', (e) => {
+      const inventorySection = document.getElementById('inventory-section');
+      inventorySection.style.display = e.target.checked ? 'block' : 'none';
+    });
+  },
+
+  /**
+   * Mostrar/ocultar alerta de IVA para inmuebles amoblados
+   */
+  toggleFurnishedWarning(value) {
+    const warning = document.getElementById('furnished-warning');
+    if (warning) {
+      warning.style.display = value === 'amoblado' ? 'block' : 'none';
+    }
   },
 
   /**
@@ -268,7 +347,16 @@ const Modals = {
       currency: 'CLP',
       adjustmentType: document.getElementById('contract-adjustment').value,
       deposit: parseInt(document.getElementById('contract-deposit').value),
-      status: 'active'
+      status: 'active',
+      // Nuevas opciones de contrato
+      contractType: document.getElementById('contract-type').value,
+      furnished: document.getElementById('contract-furnished').value,
+      sublease: document.getElementById('contract-sublease').value,
+      pets: document.getElementById('contract-pets').value,
+      hasInventory: document.getElementById('contract-inventory').checked,
+      inventoryItems: document.getElementById('contract-inventory').checked
+        ? document.getElementById('contract-inventory-items').value
+        : ''
     };
 
     // Agregar aval si se completó

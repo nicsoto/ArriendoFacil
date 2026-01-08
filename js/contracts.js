@@ -81,8 +81,7 @@ const Contracts = {
 
   <div class="clause">
     <div class="clause-title">SEGUNDO: PLAZO DEL ARRIENDO</div>
-    <p>El plazo del presente contrato será de ${this.calculateMonths(contract.startDate, contract.endDate)} meses, comenzando el ${this.formatDate(contract.startDate)} y finalizando el ${this.formatDate(contract.endDate)}.</p>
-    <p>Conforme a la Ley N° 18.101, el plazo mínimo será de un año para propiedades urbanas. En caso de no existir desahucio, se entenderá prorrogado por períodos iguales.</p>
+    ${this.getContractTypeClause(contract)}
   </div>
 
   <div class="clause">
@@ -113,8 +112,9 @@ const Contracts = {
       <li>Usar el inmueble exclusivamente para fines habitacionales.</li>
       <li>Mantener el inmueble en buen estado de conservación.</li>
       <li>Pagar las reparaciones locativas menores.</li>
-      <li>No subarrendar ni ceder el contrato sin autorización escrita de EL ARRENDADOR.</li>
-      <li>Restituir el inmueble al término del contrato en el mismo estado en que lo recibió.</li>
+      <li>${this.getSubleaseClause(contract)}</li>
+      ${this.getPetsClause(contract)}
+      <li>Restituir el inmueble al término del contrato en el mismo estado en que lo recibió${contract.furnished === 'amoblado' ? ', incluyendo todos los bienes muebles detallados en el inventario anexo' : ''}.</li>
     </ul>
   </div>
 
@@ -146,8 +146,23 @@ const Contracts = {
     ` : '<p>El presente contrato no contempla aval solidario.</p>'}
   </div>
 
+  ${contract.furnished === 'amoblado' ? `
   <div class="clause">
-    <div class="clause-title">UNDÉCIMO: DOMICILIO Y JURISDICCIÓN</div>
+    <div class="clause-title">DUODÉCIMO: CONDICIÓN DEL INMUEBLE</div>
+    <p>El inmueble se arrienda en condición <strong>AMOBLADO</strong>. EL ARRENDATARIO recibe los bienes muebles y enseres detallados en el inventario anexo al presente contrato, obligándose a mantenerlos en buen estado de conservación y a restituirlos al término del arriendo.</p>
+    <p><strong>Nota tributaria:</strong> Conforme a la normativa del Servicio de Impuestos Internos, el arriendo de inmuebles amoblados está gravado con IVA (19%).</p>
+  </div>
+  ` : ''}
+
+  ${contract.hasInventory && contract.inventoryItems ? `
+  <div class="clause">
+    <div class="clause-title">${contract.furnished === 'amoblado' ? 'DECIMOTERCERO' : 'DUODÉCIMO'}: INVENTARIO</div>
+    <p>Se adjunta al presente contrato un inventario detallado de los bienes incluidos en el arriendo y el estado actual del inmueble, el cual forma parte integrante de este contrato.</p>
+  </div>
+  ` : ''}
+
+  <div class="clause">
+    <div class="clause-title">${this.getLastClauseNumber(contract)}: DOMICILIO Y JURISDICCIÓN</div>
     <p>Para todos los efectos legales del presente contrato, las partes fijan domicilio en la ciudad de ${landlord.city || 'Santiago'} y se someten a la jurisdicción de sus Tribunales de Justicia.</p>
   </div>
 
@@ -183,6 +198,37 @@ const Contracts = {
   <div class="disclaimer">
     <strong>AVISO LEGAL:</strong> Este documento es una plantilla informativa generada por la aplicación ArriendoFácil. No constituye asesoría legal profesional. Se recomienda que este contrato sea revisado por un abogado antes de su firma para asegurar que cumple con todos los requisitos legales vigentes y se adapta a las necesidades particulares de las partes.
   </div>
+
+  ${contract.hasInventory && contract.inventoryItems ? `
+  <div style="page-break-before: always;"></div>
+  <h1 style="text-align: center; margin-top: 40px;">ANEXO: INVENTARIO Y ACTA DE ENTREGA</h1>
+  
+  <p>En ${landlord.city || 'Santiago'}, a ${this.formatDate(new Date())}, se hace entrega del inmueble ubicado en <strong>${property.address}</strong> al arrendatario <strong>${tenant.name}</strong>, RUT ${tenant.rut}, constando el siguiente inventario:</p>
+  
+  <div style="background: #f8f9fa; padding: 20px; margin: 20px 0; white-space: pre-wrap; font-family: monospace;">
+${contract.inventoryItems}
+  </div>
+  
+  <p>Ambas partes declaran estar conformes con el estado del inmueble y los bienes inventariados al momento de la entrega.</p>
+  
+  <div style="margin-top: 60px; display: flex; justify-content: space-between;">
+    <div style="text-align: center; width: 45%;">
+      <div style="border-top: 1px solid #000; margin-top: 60px; padding-top: 10px;">
+        <strong>${landlord.name}</strong><br>
+        RUT: ${landlord.rut}<br>
+        EL ARRENDADOR
+      </div>
+    </div>
+    <div style="text-align: center; width: 45%;">
+      <div style="border-top: 1px solid #000; margin-top: 60px; padding-top: 10px;">
+        <strong>${tenant.name}</strong><br>
+        RUT: ${tenant.rut}<br>
+        EL ARRENDATARIO
+      </div>
+    </div>
+  </div>
+  ` : ''}
+
 </body>
 </html>
     `;
@@ -425,6 +471,79 @@ const Contracts = {
       'fixed': 'sin reajuste, manteniéndose el valor inicial'
     };
     return texts[type] || texts.fixed;
+  },
+
+  /**
+   * Generar cláusula según tipo de contrato
+   */
+  getContractTypeClause(contract) {
+    const contractType = contract.contractType || 'plazo_fijo';
+    const startDate = this.formatDate(contract.startDate);
+    const endDate = this.formatDate(contract.endDate);
+    const months = this.calculateMonths(contract.startDate, contract.endDate);
+
+    switch (contractType) {
+      case 'mes_a_mes':
+        return `
+          <p>El presente contrato se celebra <strong>mes a mes</strong>, comenzando el ${startDate}.</p>
+          <p>Cualquiera de las partes podrá ponerle término mediante aviso escrito con al menos 30 días de anticipación al término del mes respectivo.</p>
+        `;
+      case 'indefinido':
+        return `
+          <p>El presente contrato se celebra por <strong>tiempo indefinido</strong>, comenzando el ${startDate}.</p>
+          <p>Conforme a la Ley N° 18.101, EL ARRENDADOR podrá poner término al contrato mediante desahucio judicial o notificación notarial, debiendo dar aviso con la anticipación que corresponda según la duración del arriendo.</p>
+        `;
+      case 'plazo_fijo':
+      default:
+        return `
+          <p>El plazo del presente contrato será de ${months} meses, comenzando el ${startDate} y finalizando el ${endDate}.</p>
+          <p>Conforme a la Ley N° 18.101, el plazo mínimo será de un año para propiedades urbanas. En caso de no existir desahucio, se entenderá prorrogado por períodos iguales.</p>
+        `;
+    }
+  },
+
+  /**
+   * Generar cláusula de subarriendo
+   */
+  getSubleaseClause(contract) {
+    const sublease = contract.sublease || 'prohibido';
+    if (sublease === 'permitido') {
+      return 'Podrá subarrendar el inmueble previa autorización escrita de EL ARRENDADOR.';
+    }
+    return 'No podrá subarrendar ni ceder el contrato total o parcialmente sin autorización escrita de EL ARRENDADOR.';
+  },
+
+  /**
+   * Generar cláusula de mascotas
+   */
+  getPetsClause(contract) {
+    const pets = contract.pets || 'prohibidas';
+    switch (pets) {
+      case 'permitidas':
+        return '<li>Se permite la tenencia de mascotas en el inmueble, siendo EL ARRENDATARIO responsable de cualquier daño que estas pudieran ocasionar.</li>';
+      case 'con_restriccion':
+        return '<li>Se permite la tenencia de mascotas pequeñas (máximo 10 kg) previa autorización escrita de EL ARRENDADOR, siendo EL ARRENDATARIO responsable de cualquier daño.</li>';
+      case 'prohibidas':
+      default:
+        return '<li>No se permite la tenencia de mascotas en el inmueble.</li>';
+    }
+  },
+
+  /**
+   * Obtener el número de la última cláusula según las opciones
+   */
+  getLastClauseNumber(contract) {
+    let number = 11; // Base: UNDÉCIMO
+    if (contract.furnished === 'amoblado') number++;
+    if (contract.hasInventory && contract.inventoryItems) number++;
+
+    const ordinals = {
+      11: 'UNDÉCIMO',
+      12: 'DUODÉCIMO',
+      13: 'DECIMOTERCERO',
+      14: 'DECIMOCUARTO'
+    };
+    return ordinals[number] || `CLÁUSULA ${number}`;
   },
 
   /**
